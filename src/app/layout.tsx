@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "号码标记查 — 多平台标记查询与申诉指引",
+  title: "机凤凰 — 多平台标记查询与申诉指引",
   description:
     "查询手机号在腾讯、360、电话邦等平台的标记情况，并跳转至官方申诉页面。本服务不代申诉、不承诺取消标记。",
 };
