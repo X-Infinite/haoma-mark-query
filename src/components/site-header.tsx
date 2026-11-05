@@ -42,7 +42,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
         <Link href="/" className="font-semibold tracking-tight">
-          号码标记查
+          机凤凰
         </Link>
         <nav className="hidden items-center gap-1 sm:flex">
           {links.map((l) => (
