@@ -7,7 +7,8 @@
     "dev:mock": "JUMDATA_MODE=mock next dev -p 43123 -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:alipay-config": "npx --yes tsx scripts/verify-alipay-config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

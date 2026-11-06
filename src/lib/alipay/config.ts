@@ -96,13 +96,59 @@ function appBaseUrl(): string {
   return "http://127.0.0.1:43123";
 }
 
+function readAlipayEnvCredentials():
+  | { appId: string; privateKey: string; alipayPublicKey: string; sellerId: string }
+  | null {
+  const appId = (process.env.ALIPAY_APP_ID || "").trim();
+  const privateKey = (process.env.ALIPAY_PRIVATE_KEY || "").trim();
+  const alipayPublicKey = (process.env.ALIPAY_PUBLIC_KEY || "").trim();
+  const sellerId = (process.env.ALIPAY_SELLER_ID || "").trim();
+  if (!appId || !privateKey || !alipayPublicKey || !sellerId) {
+    return null;
+  }
+  return { appId, privateKey, alipayPublicKey, sellerId };
+}
+
+function resolveNotifyUrl(mode: "sandbox" | "production"): string | null {
+  const notifyCandidate = (process.env.ALIPAY_NOTIFY_URL || "").trim();
+  if (mode === "sandbox") {
+    return notifyCandidate.startsWith("https://") ? notifyCandidate : null;
+  }
+  return notifyCandidate || null;
+}
+
+function buildConfigFromEnv(
+  mode: "sandbox" | "production",
+  creds: {
+    appId: string;
+    privateKey: string;
+    alipayPublicKey: string;
+    sellerId: string;
+  },
+): AlipayRuntimeConfig {
+  const defaultGateway =
+    mode === "production" ? PRODUCTION_GATEWAY : SANDBOX_GATEWAY;
+  return {
+    appId: creds.appId,
+    privateKey: creds.privateKey,
+    alipayPublicKey: creds.alipayPublicKey,
+    gateway: (process.env.ALIPAY_GATEWAY || "").trim() || defaultGateway,
+    signType: "RSA2",
+    sellerId: creds.sellerId,
+    sellerEmail: (process.env.ALIPAY_SELLER_EMAIL || "").trim() || null,
+    notifyUrl: resolveNotifyUrl(mode),
+    returnUrl: `${appBaseUrl()}/alipay/return`,
+    mode,
+  };
+}
+
 let cached: AlipayRuntimeConfig | null = null;
 
 /**
  * Load Alipay runtime config.
- * Sandbox: read verified .alipay-sandbox.json from project root.
+ * Sandbox: prefer ALIPAY_* env when complete; else read .alipay-sandbox.json from project root.
  * Production: use ALIPAY_* env vars (never mix with sandbox).
- * Node.js must use PKCS#1 private key (appPrivatePkcsKey).
+ * Private key may be raw PKCS#1 base64 (no PEM headers) in env or sandbox JSON.
  */
 export function getAlipayRuntimeConfig(): AlipayRuntimeConfig {
   if (cached) return cached;
@@ -111,26 +157,17 @@ export function getAlipayRuntimeConfig(): AlipayRuntimeConfig {
     process.env.ALIPAY_MODE === "production" ? "production" : "sandbox";
 
   if (mode === "production") {
-    const appId = (process.env.ALIPAY_APP_ID || "").trim();
-    const privateKey = (process.env.ALIPAY_PRIVATE_KEY || "").trim();
-    const alipayPublicKey = (process.env.ALIPAY_PUBLIC_KEY || "").trim();
-    const sellerId = (process.env.ALIPAY_SELLER_ID || "").trim();
-    if (!appId || !privateKey || !alipayPublicKey || !sellerId) {
+    const creds = readAlipayEnvCredentials();
+    if (!creds) {
       throw new Error("生产支付配置不完整");
     }
-    const notifyUrl = (process.env.ALIPAY_NOTIFY_URL || "").trim() || null;
-    cached = {
-      appId,
-      privateKey,
-      alipayPublicKey,
-      gateway: (process.env.ALIPAY_GATEWAY || "").trim() || PRODUCTION_GATEWAY,
-      signType: "RSA2",
-      sellerId,
-      sellerEmail: (process.env.ALIPAY_SELLER_EMAIL || "").trim() || null,
-      notifyUrl,
-      returnUrl: `${appBaseUrl()}/alipay/return`,
-      mode,
-    };
+    cached = buildConfigFromEnv("production", creds);
+    return cached;
+  }
+
+  const envCreds = readAlipayEnvCredentials();
+  if (envCreds) {
+    cached = buildConfigFromEnv("sandbox", envCreds);
     return cached;
   }
 
@@ -151,19 +188,15 @@ export function getAlipayRuntimeConfig(): AlipayRuntimeConfig {
     throw new Error("沙箱配置缺少 sellerId/pid");
   }
 
-  const notifyCandidate = (process.env.ALIPAY_NOTIFY_URL || "").trim();
-  const notifyUrl =
-    notifyCandidate.startsWith("https://") ? notifyCandidate : null;
-
   cached = {
     appId: app.appId,
     privateKey,
     alipayPublicKey,
-    gateway: SANDBOX_GATEWAY,
+    gateway: (process.env.ALIPAY_GATEWAY || "").trim() || SANDBOX_GATEWAY,
     signType: "RSA2",
     sellerId,
     sellerEmail: (file.sandboxAccounts?.partner?.email || "").trim() || null,
-    notifyUrl,
+    notifyUrl: resolveNotifyUrl("sandbox"),
     returnUrl: `${appBaseUrl()}/alipay/return`,
     mode,
   };
