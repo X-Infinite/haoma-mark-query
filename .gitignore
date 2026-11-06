@@ -37,6 +37,9 @@ yarn-error.log*
 # local sqlite
 /data/
 
+# Alipay sandbox keys (local only)
+.alipay-sandbox.json
+
 # vercel
 .vercel
 
