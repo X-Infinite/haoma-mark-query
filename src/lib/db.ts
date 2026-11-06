@@ -128,6 +128,20 @@ function initSchema(database: Database.Database) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_query_jobs_user ON query_jobs(user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS alipay_orders (
+      id TEXT PRIMARY KEY,
+      out_trade_no TEXT NOT NULL UNIQUE,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      subject TEXT NOT NULL,
+      total_amount TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      trade_no TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      paid_at TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_alipay_orders_out_trade_no ON alipay_orders(out_trade_no);
   `);
 }
 

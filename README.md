@@ -11,6 +11,7 @@
 - 查询结果详情：各平台是否标记、类型摘要、官方申诉链接
 - 查询历史、当月剩余配额
 - 订阅套餐（免费 / 基础 ¥18 / 专业 ¥38，支持演示「模拟开通」）
+- 首页 **0.1 元体验付款**（支付宝电脑网站支付 `alipay.trade.page.pay`）
 
 ## 技术栈
 
@@ -27,6 +28,13 @@ npm run dev
 ```
 
 浏览器打开 [http://127.0.0.1:43123](http://127.0.0.1:43123)
+
+### 首页 0.1 元支付宝体验（沙箱）
+
+1. 在 [支付宝开放平台](https://open.alipay.com/) 创建网页应用并开通「电脑网站支付」。
+2. 在 `.env.local` 配置 `ALIPAY_APP_ID`、`ALIPAY_PRIVATE_KEY`、`ALIPAY_PUBLIC_KEY`，并设置 `ALIPAY_SANDBOX=true`。
+3. 将 `NEXT_PUBLIC_APP_URL` 设为本地或内网穿透地址；**异步通知** `POST /api/alipay/notify` 需支付宝服务器能访问（沙箱联调可用 ngrok 等）。
+4. 打开首页，点击「支付宝支付 0.1 元」，完成沙箱买家账号付款；同步跳转至 `/alipay/return`，订单状态以 notify 为准。
 
 ### 演示账号
 
@@ -48,6 +56,9 @@ npm run dev
 | `JUMDATA_WEBHOOK_SECRET` | Webhook 请求头 `X-Jumdata-Signature` 验签密钥 |
 | `SESSION_SECRET` | JWT 会话密钥 |
 | `DATABASE_PATH` | SQLite 文件路径（默认 `./data/app.db`） |
+| `ALIPAY_APP_ID` / `ALIPAY_PRIVATE_KEY` / `ALIPAY_PUBLIC_KEY` | 支付宝开放平台应用（首页 0.1 元体验付款） |
+| `ALIPAY_SANDBOX` | 设为 `true` 使用沙箱网关 |
+| `NEXT_PUBLIC_APP_URL` | 支付 `return_url` / `notify_url` 根地址（需公网可达 notify） |
 
 ## 架构说明
 
