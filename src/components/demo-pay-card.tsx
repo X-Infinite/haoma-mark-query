@@ -12,8 +12,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { submitAlipayPaymentHtml } from "@/lib/alipay/submit-payment-html";
-import { DEMO_PAY_AMOUNT } from "@/lib/alipay/constants";
+
+function submitPaymentHtml(paymentHtml: string) {
+  const container = document.createElement("div");
+  container.innerHTML = paymentHtml;
+  container.style.position = "fixed";
+  container.style.top = "0";
+  container.style.left = "0";
+  container.style.width = "100%";
+  container.style.height = "100%";
+  container.style.zIndex = "9999";
+  container.style.background = "white";
+  document.body.appendChild(container);
+  const form = container.querySelector("form");
+  if (form) form.submit();
+}
 
 export function DemoPayCard() {
   const [loading, setLoading] = useState(false);
@@ -23,10 +36,10 @@ export function DemoPayCard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/alipay/pay", {
+      const res = await fetch("/api/alipay/demo-pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: DEMO_PAY_AMOUNT }),
+        body: JSON.stringify({ amount: "0.10" }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -37,7 +50,7 @@ export function DemoPayCard() {
         setError("未收到支付表单");
         return;
       }
-      submitAlipayPaymentHtml(data.paymentHtml);
+      submitPaymentHtml(data.paymentHtml);
     } catch (e) {
       setError(e instanceof Error ? e.message : "网络错误");
     } finally {
@@ -50,11 +63,11 @@ export function DemoPayCard() {
       <CardHeader className="text-center">
         <CardTitle className="text-lg">0.1 元体验付款</CardTitle>
         <CardDescription>
-          支付宝电脑网站支付（AI 网页应用收款），用于验证收银台与回调链路
+          支付宝 AI 网页应用收款（电脑网站支付 page.pay），用于沙箱联调
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-center">
-        <p className="text-3xl font-bold tracking-tight">¥{DEMO_PAY_AMOUNT}</p>
+        <p className="text-3xl font-bold tracking-tight">¥0.10</p>
         <p className="text-sm text-muted-foreground">机凤凰体验付款 · 无需登录</p>
         {error && (
           <Alert variant="destructive">

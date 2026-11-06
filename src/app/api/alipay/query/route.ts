@@ -1,42 +1,42 @@
 import { NextResponse } from "next/server";
-import { isAlipayConfigured } from "@/lib/alipay/config";
-import { findAlipayOrderByOutTradeNo } from "@/lib/alipay/orders";
-import { getAlipayClient } from "@/lib/alipay/client";
+import { getCurrentUser } from "@/lib/auth";
+import {
+  EXPERIENCE_PLAN_ID,
+  getOrderByOutTradeNo,
+} from "@/lib/alipay/orders";
+import { queryTrade } from "@/lib/alipay/service";
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+
   const { searchParams } = new URL(request.url);
-  const outTradeNo = searchParams.get("out_trade_no");
+  const outTradeNo = (searchParams.get("out_trade_no") || "").trim();
   if (!outTradeNo) {
     return NextResponse.json({ error: "缺少 out_trade_no" }, { status: 400 });
   }
 
-  const order = findAlipayOrderByOutTradeNo(outTradeNo);
+  const order = getOrderByOutTradeNo(outTradeNo);
   if (!order) {
     return NextResponse.json({ error: "订单不存在" }, { status: 404 });
   }
 
-  let alipayTrade: Record<string, unknown> | null = null;
-  if (isAlipayConfigured()) {
-    try {
-      const client = getAlipayClient();
-      const result = await client.exec("alipay.trade.query", {
-        bizContent: { out_trade_no: outTradeNo },
-      });
-      alipayTrade = result as Record<string, unknown>;
-    } catch {
-      alipayTrade = null;
+  if (user) {
+    if (order.user_id !== user.id) {
+      return NextResponse.json({ error: "订单不存在" }, { status: 404 });
     }
+  } else if (order.plan_id !== EXPERIENCE_PLAN_ID) {
+    return NextResponse.json({ error: "请先登录" }, { status: 401 });
   }
 
-  return NextResponse.json({
-    order: {
-      outTradeNo: order.out_trade_no,
-      subject: order.subject,
-      totalAmount: order.total_amount,
-      status: order.status,
-      tradeNo: order.trade_no,
-      paidAt: order.paid_at,
-    },
-    alipayTrade,
-  });
+  try {
+    const result = await queryTrade(outTradeNo);
+    return NextResponse.json({
+      ok: true,
+      localStatus: getOrderByOutTradeNo(outTradeNo)?.status,
+      ...result,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "查询失败";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

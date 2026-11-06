@@ -17,6 +17,21 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
+function submitPaymentHtml(paymentHtml: string) {
+  const container = document.createElement("div");
+  container.innerHTML = paymentHtml;
+  container.style.position = "fixed";
+  container.style.top = "0";
+  container.style.left = "0";
+  container.style.width = "100%";
+  container.style.height = "100%";
+  container.style.zIndex = "9999";
+  container.style.background = "white";
+  document.body.appendChild(container);
+  const form = container.querySelector("form");
+  if (form) form.submit();
+}
+
 export default function PricingPage() {
   const router = useRouter();
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
@@ -43,23 +58,44 @@ export default function PricingPage() {
     }
     setLoadingPlan(planId);
     setMessage(null);
-    const res = await fetch("/api/subscription/checkout", {
+
+    if (planId === "free") {
+      const res = await fetch("/api/subscription/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: "free" }),
+      });
+      const data = await res.json();
+      setLoadingPlan(null);
+      if (!res.ok) {
+        setMessage(data.error ?? "切换失败");
+        return;
+      }
+      setCurrentPlan("free");
+      setMessage(data.message ?? "已切换为免费版");
+      router.refresh();
+      return;
+    }
+
+    const res = await fetch("/api/alipay/pay", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         planId,
-        billingPeriod: planId === "free" ? undefined : billing,
+        billingPeriod: billing,
       }),
     });
     const data = await res.json();
     setLoadingPlan(null);
     if (!res.ok) {
-      setMessage(data.error ?? "开通失败");
+      setMessage(data.error ?? "下单失败");
       return;
     }
-    setCurrentPlan(planId);
-    setMessage(data.message);
-    router.refresh();
+    if (data.paymentHtml) {
+      submitPaymentHtml(data.paymentHtml);
+      return;
+    }
+    setMessage("未获取到支付表单");
   }
 
   const order: PlanId[] = ["free", "basic", "pro"];
@@ -74,9 +110,10 @@ export default function PricingPage() {
       </div>
 
       <Alert>
-        <AlertTitle>演示收银台</AlertTitle>
+        <AlertTitle>支付宝收银台</AlertTitle>
         <AlertDescription>
-          下方「模拟开通」仅在本地数据库中更新套餐，不会产生真实支付。上线时请接入微信/支付宝等正式支付。
+          付费套餐将跳转支付宝完成支付；支付成功以服务端交易查询或异步通知为准。本地沙箱联调时若未配置公网
+          HTTPS 通知地址，将依赖主动查询确认结果。
         </AlertDescription>
       </Alert>
 
@@ -153,7 +190,7 @@ export default function PricingPage() {
                   ) : id === "free" ? (
                     "切换为免费版"
                   ) : (
-                    "模拟开通（演示）"
+                    "支付宝支付"
                   )}
                 </Button>
               </CardFooter>
