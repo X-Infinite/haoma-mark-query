@@ -58,10 +58,17 @@ export interface UsageRow {
 
 let db: Database.Database | null = null;
 
+function defaultDataDir(): string {
+  if (process.env.VERCEL) {
+    return path.join("/tmp", "haoma-mark-query");
+  }
+  return path.join(process.cwd(), "data");
+}
+
 function dbPath(): string {
   const envPath = process.env.DATABASE_PATH;
   if (envPath) return envPath;
-  const dataDir = path.join(process.cwd(), "data");
+  const dataDir = defaultDataDir();
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   return path.join(dataDir, "app.db");
 }

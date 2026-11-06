@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonServerError } from "@/lib/api-error";
 import { createSession, loginUser, sanitizeUser } from "@/lib/auth";
 import { z } from "zod";
 
@@ -8,17 +9,21 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null);
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "请求参数无效" }, { status: 400 });
-  }
+  try {
+    const body = await request.json().catch(() => null);
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "请求参数无效" }, { status: 400 });
+    }
 
-  const result = await loginUser(parsed.data.email, parsed.data.password);
-  if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: 401 });
-  }
+    const result = await loginUser(parsed.data.email, parsed.data.password);
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 401 });
+    }
 
-  await createSession(result.user.id);
-  return NextResponse.json({ user: sanitizeUser(result.user) });
+    await createSession(result.user.id);
+    return NextResponse.json({ user: sanitizeUser(result.user) });
+  } catch (error) {
+    return jsonServerError(error);
+  }
 }

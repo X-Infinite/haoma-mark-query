@@ -41,7 +41,19 @@ export function DemoPayCard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: "0.10" }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: { error?: string; paymentHtml?: string } = {};
+      if (raw.trim()) {
+        try {
+          data = JSON.parse(raw) as typeof data;
+        } catch {
+          setError("服务器返回无效响应");
+          return;
+        }
+      } else if (!res.ok) {
+        setError("服务器错误，请稍后重试");
+        return;
+      }
       if (!res.ok) {
         setError(data.error ?? "发起支付失败");
         return;
